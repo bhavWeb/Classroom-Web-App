@@ -1,0 +1,89 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  email    String   @unique
+  password String
+  role     Role
+  // teacher  Teacher? @relation("UserToTeacher")
+  teacher  Classroom[] @relation("ClassroomTeacher")
+  student  Student? @relation("UserToStudent")
+  assignedStudents  TeacherStudent[] @relation("AssignedStudents")
+  assignedBy        TeacherStudent[] @relation("StudentAssignments")
+}
+
+model Classroom {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  name       String
+  startTime  String
+  endTime    String
+  days       String[]
+  // teacher    Teacher?  @relation("ClassroomTeacher", fields: [teacherId], references: [id])
+  teacher    User?  @relation("ClassroomTeacher", fields: [teacherId], references: [id])
+  teacherId  String?  @db.ObjectId
+  students   Student[] @relation("StudentClassroom")
+  timetable  Timetable[]
+}
+
+// model Teacher {
+//   id         String     @id @default(auto()) @map("_id") @db.ObjectId
+//   user       User       @relation("UserToTeacher", fields: [userId], references: [id])
+//   userId     String     @unique @db.ObjectId
+//   classroom  Classroom? @relation("ClassroomTeacher")
+//   classroomId String?   @db.ObjectId
+//   timetable  Timetable[]
+// }
+
+model Student {
+  id          String     @id @default(auto()) @map("_id") @db.ObjectId
+  user        User       @relation("UserToStudent", fields: [userId], references: [id])
+  userId      String     @unique @db.ObjectId
+  classroom   Classroom? @relation("StudentClassroom", fields: [classroomId], references: [id])
+  classroomId String?    @db.ObjectId
+
+  // teacher     User?      @relation("AssignedStudents", fields: [teacherId], references: [id])
+  teacherId   String?    @db.ObjectId
+}
+
+model TeacherStudent {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  teacherId  String   @db.ObjectId
+  studentId  String   @db.ObjectId
+
+  teacher    User     @relation("AssignedStudents", fields: [teacherId], references: [id])
+  student    User     @relation("StudentAssignments", fields: [studentId], references: [id])
+
+  @@unique([teacherId, studentId]) // Ensures unique pairs
+}
+
+model Timetable {
+  id          String     @id @default(auto()) @map("_id") @db.ObjectId
+  subject     String
+  startTime   String
+  endTime     String
+  day         String
+  // teacher     Teacher    @relation(fields: [teacherId], references: [id])
+  teacherId   String     @db.ObjectId
+  classroom   Classroom?  @relation(fields: [classroomId], references: [id])
+  classroomId String     @db.ObjectId
+}
+
+enum Role {
+  PRINCIPAL
+  TEACHER
+  STUDENT
+}
+
